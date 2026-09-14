@@ -1,6 +1,7 @@
 # DewOutfits
 **DewOutfits** (by Dewsmith) is an outfit loader for Figura. It loads textures from the data folder and sends them in pings, allowing you to save on avatar space. 
-
+## How do I download this??
+Click `<> Code`, `Download ZIP` in the top right above the commit counter. 
 ## How to use
 It's not that hard, but requires some setup. An example model is in this repo, and the script is preconfigured to try to set those modelparts' textures.  
 For a simple setup with outfit support for arms, legs, and the body, just copy the parts with "Outfit" in the name to your model, making sure you keep them in the correct groups. Or just change the model references in the config, at the top of the script.  
