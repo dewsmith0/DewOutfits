@@ -1,5 +1,5 @@
 --=== DewOutfits by Dewsmith ===--
--- Version: 1.0.0
+-- Version: 1.0.1
 -- License: CC-BY-NC-SA 4.0 
 -- Exception: FiguraMC Verified Creators may use this script in paid avatars or commissions sold through the official FiguraMC Discord.
 --            Please do tell me if you do use it like that. 
@@ -173,7 +173,7 @@ local function getScrollTitle(currentlySelected, selectionTable, mainTitle) -- b
 end
 
 local outfitAction = action_wheel:newAction()
-    :title("Select Outfit | Equipped: <None>")
+    :title(getScrollTitle(hoveredIndex, outfitNames, "Select Outfit | Equipped: <None>"))
     :item("leather_chestplate")
     :color(vectors.hexToRGB("#ff7c00"))
 
