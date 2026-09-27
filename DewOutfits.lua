@@ -1,10 +1,9 @@
 --=== DewOutfits by Dewsmith ===--
--- Version: 1.0.1
+-- Version: 1.0.1 @ auriawheel branch
 -- License: CC-BY-NC-SA 4.0 
 -- Exception: FiguraMC Verified Creators may use this script in paid avatars or commissions sold through the official FiguraMC Discord.
 --            Please do tell me if you do use it like that. 
 -- GitHub: https://github.com/dewsmith0/DewOutfits
--- getNextScrollOption() and getScrollTitle() by Dyrris__, used with permission.
 
 -- =========================== CONFIG ===========================
 -- You may change your model root here
@@ -99,7 +98,6 @@ lib.addAction = function () end
 --=========================== HOST ONLY PART ===========================
 if not host:isHost() then return lib end
 
-local hoveredIndex = 1 -- index of the scrolled outfit option in the menu
 local selectedIndex = 1 -- menu index of the selected outfit 
 local outfitNames = { "<None>" } -- "<None>" is a special value that unequips the current outfit, do not change
 local nextOutfit = nil -- name of the outfit currently being pinged
@@ -128,6 +126,11 @@ local function splitByChunk(text, chunkSize)
     end
     return s
 end
+local auria_wheel = require("auria_wheel.main")
+
+local outfitAction = auria_wheel.actions:newDropdown():setTitle("Outfit: <None>")
+    :setChoices(outfitNames):setIconItem("minecraft:leather_chestplate")
+
 
 local function startPinging(textureName)
     if textureName == "<None>" then 
@@ -155,43 +158,17 @@ local function startPinging(textureName)
     stream:close()
 end
 
-local function getNextScrollOption(currentlySelected, selectionTable, scrollDir) -- by Dyrris__
-    return (currentlySelected + -scrollDir - 1) % #selectionTable + 1
-end
-
-local function getScrollTitle(currentlySelected, selectionTable, mainTitle) -- by Dyrris__
-    local tbl = {}
-    tbl[#tbl+1] = { text = mainTitle, color = "#FFFFFF" }
-    for index, title in ipairs(selectionTable) do
-        if index == currentlySelected then
-            tbl[#tbl+1] = { text = "\n> "..title, color = "#F3C738" }
-        else
-            tbl[#tbl+1] = { text = "\n  "..title, color = "#797979" }
-        end
-    end
-    return toJson(tbl)
-end
-
-local outfitAction = action_wheel:newAction()
-    :title(getScrollTitle(hoveredIndex, outfitNames, "Select Outfit | Equipped: <None>"))
-    :item("leather_chestplate")
-    :color(vectors.hexToRGB("#ff7c00"))
-
-function outfitAction.leftClick() 
+outfitAction:onPress(function ()
     if isPinging then 
         log("Please wait for the current ping to finish.")
         return
     end
-    selectedIndex = hoveredIndex
+    if outfitAction.value == nil then return end
+    selectedIndex = outfitAction.value
     reping = false
-    outfitAction:setTitle(getScrollTitle(hoveredIndex,outfitNames, "Select Outfit | Equipped: "..outfitNames[selectedIndex]))
+    outfitAction:setTitle("Outfit: \n".. outfitNames[selectedIndex])
     startPinging(outfitNames[selectedIndex])
-end
-
-function outfitAction.scroll(dir)
-    hoveredIndex = getNextScrollOption(hoveredIndex, outfitNames, dir)
-    outfitAction:setTitle(getScrollTitle(hoveredIndex,outfitNames, "Select Outfit | Equipped: "..outfitNames[selectedIndex]))
-end
+end)
 
 events.TICK:register(function ()
     if not isPinging then
@@ -217,6 +194,6 @@ events.TICK:register(function ()
     end
 
 end)
----@param page Page The action wheel page to add the outfits menu to.
-function lib.addAction(page) page:setAction(-1, outfitAction) end
+---@param page auria.wheel.page The action wheel page to add the outfits menu to.
+function lib.addAction(page) table.insert(page.actions, outfitAction) end
 return lib

@@ -1,10 +1,13 @@
 # DewOutfits
-**DewOutfits** (by Dewsmith) is an outfit loader for Figura. It loads textures from the data folder and sends them in pings, allowing you to save on avatar space. 
+**DewOutfits** (by Dewsmith) is an outfit loader for Figura. It loads textures from the data folder and sends them in pings, allowing you to save on avatar space.  
+<ins>**You are looking at the auriawheel branch! [Click here if you don't use auriawheel!](https://github.com/dewsmith0/DewOutfits/tree/master)**</ins>
+
 ## How do I download this??
 Click `<> Code`, `Download ZIP` in the top right above the commit counter. 
 ## How to use
 It's not that hard, but requires some setup. An example model is in this repo, and the script is preconfigured to try to set those modelparts' textures.  
 For a simple setup with outfit support for arms, legs, and the body, just copy the parts with "Outfit" in the name to your model, making sure you keep them in the correct groups. Or just change the model references in the config, at the top of the script.  
+Don't forget to copy `DewOutfits.lua` to your avatar.  
 Then, require the script somewhere, and add `DewOutfits.addAction(page)`, where `page` is the action wheel page you want to put it in.  
 Just making this clear: **Outfits are stored in your Figura data folder, in `DewOutfits/` by default. This folder will automatically be created by default.**  
 

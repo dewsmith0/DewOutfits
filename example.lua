@@ -1,6 +1,6 @@
+local auria_wheel = require("auria_wheel.main")
 local DewOutfits = require("DewOutfits")
-
-vanilla_model.PLAYER:setVisible(false)
-local page = action_wheel:newPage()
-action_wheel:setPage(page)
+local page = auria_wheel:newPage():setTitle("Test")
 DewOutfits.addAction(page)
+auria_wheel.setPage(page)
+vanilla_model.PLAYER:setVisible(false)

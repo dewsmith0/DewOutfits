@@ -1,0 +1,295 @@
+local wheel = require("../core") ---@class auria.wheel
+---@class auria.wheel.action_maker
+local ActionMaker = wheel.actions
+
+local defaultBgSize = vec(96, 12)
+
+---@type auria.wheel.action_data
+local api = {}
+
+---@class auria.wheel.action.slider : auria.wheel.action
+---@field value number
+---@field valueY number
+---@field range Vector2
+---@field rangeY Vector2
+---@field step number
+---@field loop boolean
+---@field showValue boolean
+---@field bgTexture Texture?
+---@field bgMatrix Matrix3?
+---@field backgroundSize Vector2
+---@field bgRenderType ModelPart.renderType|string?
+---@field valueChange (fun(value: number, valueY: number))?
+local methods = {}
+api.methods = methods
+
+---@param action auria.wheel.action.slider
+---@param popup auria.wheel.action_popup
+function api.createPopup(action, popup)
+   -- model
+   local model = popup.model
+   wheel.lib.models.slider_indicator:copy("indicator"):light(15, 15)
+      :moveTo(model)
+   local size = action.backgroundSize
+   local bgModel
+   if action.bgTexture then
+      bgModel = wheel.lib.models.nineslice:copy("bg")
+      bgModel:setPrimaryTexture("CUSTOM", action.bgTexture)
+         :setUVMatrix(action.bgMatrix)
+      if action.bgRenderType then
+         bgModel:setPrimaryRenderType(action.bgRenderType)
+      end
+   else
+      bgModel = wheel.lib.models.slider_bg:copy("bg")
+      model.indicator:setVisible(false)
+   end
+
+   local bgSize = size + 4
+   local outline = wheel.lib.makeNineslice(
+      wheel.lib.texture,
+      vec(0, 32, 5, 5),
+      2,
+      bgSize,
+      bgModel
+   )
+   outline:setPos(bgSize:augmented(-2) / 2)
+   model:addChild(outline)
+
+   local textX, textY
+   if action.showValue then
+      textX = model:newText("x")
+      textX:setAlignment("CENTER")
+         :setPos(0, - bgSize.y * 0.5 - 4, 0)
+         :setOutline(true)
+      textY = model:newText("")
+      textY:setPos(bgSize.x * -0.5 - 4, 4)
+         :setOutline(true)
+   end
+   -- data
+   popup.data = {
+      lastValue = vec(0, 0),
+      bg = bgModel,
+      textX = textX,
+      textY = textY,
+   }
+   popup.size = vec(bgSize.x, bgSize.y, bgSize.x, bgSize.y) * 0.5
+end
+
+---@param value number
+---@param range Vector2
+---@param fallback number
+---@param offset number
+---@param step number
+---@return number
+local function unmapSliderValue(value, range, fallback, offset, step)
+   if range.x == range.y then
+      return fallback
+   end
+   local scale = (range.y - range.x)
+   local v = (value - range.x) / scale
+   v = v + offset
+   if step ~= 0 then
+      v = math.round(v * scale / step) / scale * step
+   end
+   return v
+end
+
+---@param action auria.wheel.action.slider
+---@param popup auria.wheel.action_popup
+---@param mousePos Vector2
+---@param fallback? number
+---@return Vector2
+local function getUnmappedSliderPos(action, popup, mousePos, fallback)
+   local offset = mousePos - popup.data.mouseStart
+   offset = offset / action.backgroundSize
+   offset.y = -offset.y
+   local value = popup.data.lastValue
+   fallback = fallback or (action.bgTexture and 0.5 or 1)
+   local step = action.step
+   local values = vec(
+      unmapSliderValue(value.x, action.range, fallback, offset.x, step),
+      unmapSliderValue(value.y, action.rangeY, fallback, offset.y, step)
+   )
+   if action.loop then
+      return values % 1
+   end
+   return vec(math.clamp(values.x, 0, 1), math.clamp(values.y, 0, 1))
+end
+
+---@param action auria.wheel.action.slider
+function api.press(action)
+   local popup, isNew = wheel.lib.makeActionPopup(action)
+   if not isNew then
+      return
+   end
+   local mousePos = wheel.lib.getMousePos()
+   local valuePos = getUnmappedSliderPos(action, popup, mousePos, 0.5)
+   valuePos.y = 1 - valuePos.y
+   local pos = -mousePos
+   pos = pos + action.backgroundSize * (valuePos - 0.5)
+   popup.pos = pos:augmented(0)
+end
+
+---@param n number
+---@param range Vector2
+local function clampValueWithRange(n, range)
+   return math.clamp(
+      n,
+      math.min(range.x, range.y),
+      math.max(range.x, range.y)
+   )
+end
+
+---@param action auria.wheel.action.slider
+local function clampSliderValues(action)
+   action.value = clampValueWithRange(action.value, action.range)
+   action.valueY = clampValueWithRange(action.valueY, action.rangeY)
+end
+
+---@param action auria.wheel.action.slider
+---@param popup auria.wheel.action_popup
+function api.popupOpened(action, popup)
+   clampSliderValues(action)
+   popup.data.lastValue = vec(action.value, action.valueY)
+   popup.data.mouseStart = wheel.lib.getMousePos()
+end
+
+---@param action auria.wheel.action.slider
+---@param popup auria.wheel.action_popup
+local function updateSliderValues(action, popup)
+   action.value = math.lerp(action.range.x, action.range.y, popup.data.pos.x)
+   action.valueY = math.lerp(action.rangeY.x, action.rangeY.y, popup.data.pos.y)
+end
+
+---@param action auria.wheel.action.slider
+---@param popup auria.wheel.action_popup
+function api.popupClosed(action, popup)
+   if popup.data.pos then
+      updateSliderValues(action, popup)
+      popup.data.pos = nil
+   end
+   popup.data.mouseStart = nil
+end
+
+---@param action auria.wheel.action.slider
+---@param delta number
+function api.actionRender(action, delta)
+   local popup = action.renderData.popup
+   if not popup then return end
+   if not popup.data.mouseStart then return end
+   local newPos = getUnmappedSliderPos(action, popup, wheel.lib.getMousePos())
+   if popup.data.pos == newPos then return end
+   popup.data.pos = newPos
+   updateSliderValues(action, popup)
+   if action.valueChange then
+      action.valueChange(action.value, action.valueY)
+   end
+   local pos = popup.data.pos
+   local tex = action.bgTexture
+   if popup.data.textX then
+      popup.data.textX:setText(tostring(action.value))
+         :setVisible(action.range.x ~= action.range.y)
+      popup.data.textY:setText(tostring(action.valueY))
+         :setVisible(action.rangeY.x ~= action.rangeY.y)
+   end
+   if not tex then
+      popup.data.bg:setUVPixels(1 - pos.x, pos.y - 1)
+      return
+   end
+   local modelPos = vec(-pos.x, pos.y - 1) * action.backgroundSize - action.backgroundSize * -0.5
+   popup.model.indicator:setPos(modelPos:augmented(0))
+end
+
+---creates new slider
+---@return auria.wheel.action.slider
+function ActionMaker:newSlider()
+   local slider = wheel.lib.newAction("slider", self)
+   slider.value = 0
+   slider.valueY = 0
+   slider.backgroundSize = defaultBgSize
+   slider.range = vec(0, 1)
+   slider.rangeY = vec(0, 0)
+   slider.step = 0
+   slider.loop = false
+   slider.showValue = true
+   return slider
+end
+
+---sets background of slider
+---@param texture Texture
+---@param pos Vector2
+---@param size Vector2
+---@param renderType? ModelPart.renderType
+---@return auria.wheel.action.slider
+function methods:setBackground(texture, pos, size, renderType)
+   self.bgTexture = texture
+   self.bgMatrix = wheel.lib.makeUVMat(texture, pos, size)
+   self.bgRenderType = renderType
+   return self
+end
+
+---sets size of this slider
+---@param size Vector2?
+---@return auria.wheel.action.slider
+function methods:setBackgroundSize(size)
+   self.backgroundSize = size or defaultBgSize
+   return self
+end
+
+---sets range, minimum (x) and maximum (y) of this slider
+---@param range Vector2
+---@param rangeY? Vector2
+---@return auria.wheel.action.slider
+function methods:setRange(range, rangeY)
+   self.range = range
+   self.rangeY = rangeY or vec(0, 0)
+   return self
+end
+
+---sets spacing between values in slider
+---@param step number
+---@return auria.wheel.action.slider
+function methods:setStep(step)
+   self.step = step
+   return self
+end
+
+---sets function which will be called when slider value changes
+---@param func? fun(value: number, valueY: number)
+---@return auria.wheel.action.slider
+function methods:onValueChange(func)
+   self.valueChange = func
+   return self
+end
+
+---sets value of this slider
+---@param value? number
+---@param valueY? number
+---@return auria.wheel.action.slider
+function methods:setValue(value, valueY)
+   if value then
+      self.value = value
+   end
+   if valueY then
+      self.valueY = valueY
+   end
+   return self
+end
+
+---makes slider loop instead of clamp
+---@param loop boolean
+---@return auria.wheel.action.slider
+function methods:setLoop(loop)
+   self.loop = loop
+   return self
+end
+
+---sets if value should be displayed
+---@param show boolean
+---@return auria.wheel.action.slider
+function methods:setShowValue(show)
+   self.showValue = show
+   return self
+end
+
+wheel.lib.newActionType("slider", api)
