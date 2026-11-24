@@ -1,5 +1,5 @@
 --=== DewOutfits by Dewsmith ===--
--- Version: 1.0.1
+-- Version: 1.1.0
 -- License: CC-BY-NC-SA 4.0 
 -- Exception: FiguraMC Verified Creators may use this script in paid avatars or commissions sold through the official FiguraMC Discord.
 --            Please do tell me if you do use it like that. 
@@ -34,6 +34,9 @@ local cfg = {
     -- The name of the folder in data to search for outfits. If it does not exist, it will be created.
     -- Default: "DewOutfits/" | Type: String
     outfitDir = "DewOutfits/",
+    -- Whether to equip the same outfit after reloading.
+    -- Default: false | Type: Boolean
+    persistOutfit = true
 }
 --=========================== VIEWER CODE ===========================
 local outfitBuffer = {} -- stores partially loaded outfits
@@ -106,10 +109,11 @@ local nextOutfit = nil -- name of the outfit currently being pinged
 local reping = false -- whether we are repinging the outfit
 local pingBuffer = {} -- stores the outfit that is currently being pinged, used in the ping event
 local pingIndex = 1 -- count of pinged chunks for the current outfit
+local hasPersisted = false -- whether the outfit has been loaded due to persistOutfit
 
 if not file:exists(cfg.outfitDir) then 
-    file:mkdir(cfg.outfitDir)
-    print("[DewOutfits] The outfits directory has been created at: ", cfg.outfitDir, ". You can change this path in the config.")
+    file:mkdirs(cfg.outfitDir)
+    print("[DewOutfits] The outfits directory has been created at:", cfg.outfitDir, ". You can change this path in the config.")
 end
 local outfitCount = 1 -- so the iterator doesn't break on non-png files
 for i, fileName in ipairs(file:list(cfg.outfitDir)) do 
@@ -138,18 +142,22 @@ local function startPinging(textureName)
     pingBuffer = {}
     local texturefile = cfg.outfitDir..textureName
     local textureBuffer = data:createBuffer(1024000)
-    local success, result = pcall(file.openReadStream, file, texturefile)
-    if not success then print("[DewOutfits] Failed to open read stream:", result) return end
-    local stream = result
+    local readSuccess, readResult = pcall(file.openReadStream, file, texturefile)
+    if not readSuccess then print("[DewOutfits] Failed to open read stream:", readResult) return end
+    local stream = readResult
     textureBuffer:readFromStream(stream)
     local bufferLen = textureBuffer:getLength()
     textureBuffer:setPosition(0)
     local base64 = textureBuffer:readBase64(bufferLen)
     local b64Len = string.len(base64)
     expectedSizes[textureName] = math.ceil(b64Len / cfg.chunkSize)
-
     pings.outfitHeader(textureName, selectedIndex, math.ceil(b64Len / cfg.chunkSize))
     pingBuffer = splitByChunk(base64, cfg.chunkSize)
+    if cfg.persistOutfit then
+        local persistSuccess, persistResult = pcall(file.writeString, file, cfg.outfitDir.."persist.txt", textureName)
+        if not persistSuccess then print("[DewOutfits] Failed to save outfit persist: "..persistResult)
+        end
+    end
     isPinging = true
     textureBuffer:close()
     stream:close()
@@ -170,6 +178,24 @@ local function getScrollTitle(currentlySelected, selectionTable, mainTitle) -- b
         end
     end
     return toJson(tbl)
+end
+
+local function getPersist()
+    if cfg.persistOutfit then
+        hasPersisted = true
+        local success, persistName = pcall(file.readString, file, cfg.outfitDir.."persist.txt")
+        if not success then return end
+        for k, v in ipairs(outfitNames) do
+            if v == persistName then
+                selectedIndex = k
+                startPinging(persistName)
+                return
+            end
+        end
+        -- this next part should only run if the file wasn't found
+        print("[DewOutfits] Could not find persisted outfit: \""..persistName.."\". The persist has been removed.")
+        file:delete(cfg.outfitDir.."persist.txt")
+    end
 end
 
 local outfitAction = action_wheel:newAction()
@@ -193,7 +219,10 @@ function outfitAction.scroll(dir)
     outfitAction:setTitle(getScrollTitle(hoveredIndex,outfitNames, "Select Outfit | Equipped: "..outfitNames[selectedIndex]))
 end
 
+
+
 events.TICK:register(function ()
+    if not hasPersisted then getPersist() return end
     if not isPinging then
         if world.getTime() % cfg.repingTime == 0 then
             reping = true
