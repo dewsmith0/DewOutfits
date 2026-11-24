@@ -14,7 +14,7 @@ There are some options you can change, besides `parts`:
 - `chunkSize` (default `400`) is the most important one, it determines how many bytes of Base64 are sent per ping (twice a second). If you have supporter, you might be able to double this, but don't count on it as backend lag usually lowers the effective limit. Don't set this too high or pings might fail. 
 - `repingTime` (default `800`) controls how often (in ticks) the outfit is pinged again automatically, so that people don't miss out on it because they weren't loaded. Outfits are only repinged when you're not already pinging one.
 - `outfitDir` (default `DewOutfits/`) is the subfolder of `data` where the script loads outfits from. If it doesn't exist, it will automatically be created.
-
+- `persistOutfit` (default `false`) defines whether the previously equipped outfit should be repinged when the avatar reloads on host. 
 ## Important notes
 - Make sure the outfit model parts you select are set to hidden in Blockbench, and have a dummy texture (can be empty) with the same size and UVs as your outfits.
 - This script was written with no reference to any other outfit scripts, other than for the actual `applyOutfit` function. Isn't that cool? I learned so much from this.
