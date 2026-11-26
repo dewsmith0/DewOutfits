@@ -1,10 +1,10 @@
 --=== DewOutfits by Dewsmith ===--
--- Version: 1.1.0
+-- Version: 1.1.1
 -- License: CC-BY-NC-SA 4.0 
 -- Exception: FiguraMC Verified Creators may use this script in paid avatars or commissions sold through the official FiguraMC Discord.
 --            Please do tell me if you do use it like that. 
 -- GitHub: https://github.com/dewsmith0/DewOutfits
--- getNextScrollOption() and getScrollTitle() by Dyrris__, used with permission.
+-- getNextScrollOption() and getScrollTitle() by Eiden__, used with permission.
 
 -- =========================== CONFIG ===========================
 -- You may change your model root here
@@ -68,11 +68,12 @@ local function equipOutfit(id)
     local bufferEntry = outfitBuffer[id]
     if not bufferEntry then --[[print("[DewOutfits] buffer is nil")]] return end
     if #bufferEntry ~= expectedSizes[id] then --[[print("[DewOutfits] size mismatch", #bufferEntry, expectedSizes[id])]] return end
-    local parsedTexture = table.concat(bufferEntry, "", 1, #bufferEntry)
-    local success, result = pcall(textures.read, textures, id, parsedTexture)
-    if not success then print("outfit error:", result); return end 
-    outfitCache[id] = result
-    applyOutfit(result)
+    local parseSuccess, parseResult = pcall(table.concat, bufferEntry, "", 1, #bufferEntry)
+    if not parseSuccess then print("[DewOutfits] outfit parse error:", parseResult) return end
+    local readSuccess, readResult = pcall(textures.read, textures, id, parseResult)
+    if not readSuccess then print("[DewOutfits] outfit read error:", readResult) return end
+    outfitCache[id] = readResult
+    applyOutfit(readResult)
 end
 
 local function tryLoadCachedOutfit(name) 
@@ -163,11 +164,11 @@ local function startPinging(textureName)
     stream:close()
 end
 
-local function getNextScrollOption(currentlySelected, selectionTable, scrollDir) -- by Dyrris__
+local function getNextScrollOption(currentlySelected, selectionTable, scrollDir) -- by Eiden__
     return (currentlySelected + -scrollDir - 1) % #selectionTable + 1
 end
 
-local function getScrollTitle(currentlySelected, selectionTable, mainTitle) -- by Dyrris__
+local function getScrollTitle(currentlySelected, selectionTable, mainTitle) -- by Eiden__
     local tbl = {}
     tbl[#tbl+1] = { text = mainTitle, color = "#FFFFFF" }
     for index, title in ipairs(selectionTable) do
